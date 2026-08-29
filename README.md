@@ -1,7 +1,8 @@
 # Atom2D
 Tiny 2D graphics engine in C-language using SDL2+
 
-<img width="810" height="624" alt="image" src="https://github.com/user-attachments/assets/67473786-b66d-4fa7-b4c8-6123feab02e8" />   
+<img width="810" height="624" alt="image" src="https://github.com/user-attachments/assets/5ffb9011-981c-40e0-8db5-63ca358792f7" />  
+
 
 *Early testing*  
 
