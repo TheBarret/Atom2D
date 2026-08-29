@@ -14,10 +14,13 @@ Color color(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     return (Color){r, g, b, a};
 }
 
-void texture_free(Texture* tex) {
-    if (tex && tex->loaded) {
-        // SDL will handle this later
-        tex->loaded = false;
-        tex->handle = 0;
+/*
+   //moved to texture.c
+    void texture_free(Texture* tex) {
+        if (tex && tex->loaded) {
+            // SDL will handle this later
+            tex->loaded = false;
+            tex->handle = 0;
+        }
     }
-}
+*/

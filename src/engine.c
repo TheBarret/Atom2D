@@ -1,5 +1,7 @@
 #include "interior.h"
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,27 +12,25 @@ Engine* engine_create(const char* title, int width, int height, uint32_t target_
         return NULL;
     }
 
-    //Engine* engine = (Engine*)malloc(sizeof(Engine));
-    //if (!engine) return NULL;
+    // load image module
+    if (!(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG) & (IMG_INIT_PNG | IMG_INIT_JPG))) {
+        fprintf(stderr, "IMG_Init Failed: %s\n", IMG_GetError());
+        SDL_Quit();
+        return NULL;
+    }
+
+    // load font module
+    if (TTF_Init() != 0) {
+        fprintf(stderr, "TTF_Init Failed: %s\n", TTF_GetError());
+        SDL_Quit();
+        return NULL;
+    }
+
+    // load engine
     Engine* engine = (Engine*)calloc(1, sizeof(Engine));
     if (!engine) return NULL;
 
-    /* Broken, doesn't check return state
-    SDL_Window* win = SDL_CreateWindow(
-        title,
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
-        width, height,
-        SDL_WINDOW_SHOWN
-    );
-
-    SDL_Renderer* ren = SDL_CreateRenderer(
-        win, -1,
-        SDL_RENDERER_ACCELERATED // Disable VSYNC if doing manual FPS capping
-    );
-     */
-
-    // added checking logic
+    // create window handle
     SDL_Window* win = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                         width, height, SDL_WINDOW_SHOWN);
     if (!win) {
@@ -40,6 +40,7 @@ Engine* engine_create(const char* title, int width, int height, uint32_t target_
         return NULL;
     }
 
+    // create renderer
     SDL_Renderer* ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
     if (!ren) {
         fprintf(stderr, "Renderer creation failed: %s\n", SDL_GetError());
@@ -49,9 +50,10 @@ Engine* engine_create(const char* title, int width, int height, uint32_t target_
         return NULL;
     }
 
+    // create interior plate
     engine->window = win;
     engine->renderer = ren;
-    engine->clear_color = color(20, 20, 25, 255);
+    engine->clear_color = color(90, 90, 90, 255);
     engine->running = 1;
 
     // Setup high-resolution timers
@@ -62,17 +64,6 @@ Engine* engine_create(const char* title, int width, int height, uint32_t target_
 
     return engine;
 }
-
-//void engine_poll_events(Engine* engine) {
-//    if (!engine) return;
-//
-//    SDL_Event ev;
-//    while (SDL_PollEvent(&ev)) {
-//        if (ev.type == SDL_QUIT) {
-//            engine->running = 0;
-//        }
-//    }
-//}
 
 void engine_clear(Engine* engine) {
     if (!engine || !engine->renderer) return;
@@ -87,11 +78,6 @@ void engine_clear(Engine* engine) {
     SDL_RenderClear((SDL_Renderer*)engine->renderer);
 }
 
-//void engine_present(Engine* engine) {
-//    if (!engine || !engine->renderer) return;
-//    SDL_RenderPresent((SDL_Renderer*)engine->renderer);
-//}
-
 void engine_destroy(Engine* engine) {
     if (!engine) return;
 
@@ -101,8 +87,12 @@ void engine_destroy(Engine* engine) {
     if (engine->window) {
         SDL_DestroyWindow((SDL_Window*)engine->window);
     }
-
+    // demod modules
+    TTF_Quit();
+    IMG_Quit();
     SDL_Quit();
+
+    // de-allocate engine
     free(engine);
 }
 
