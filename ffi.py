@@ -70,6 +70,15 @@ c_engine.engine_get_mouse_pos.restype = None
 c_engine.engine_mouse_button_down.argtypes = [ctypes.c_void_p, ctypes.c_int]
 c_engine.engine_mouse_button_down.restype = ctypes.c_uint8
 
+c_engine.engine_draw_rect.argtypes = [ctypes.c_void_p, Rect, Color, ctypes.c_uint8]
+c_engine.engine_draw_rect.restype = None
+
+c_engine.engine_draw_line.argtypes = [ctypes.c_void_p, Vec2, Vec2, Color]
+c_engine.engine_draw_line.restype = None
+
+c_engine.engine_draw_point.argtypes = [ctypes.c_void_p, Vec2, Color]
+c_engine.engine_draw_point.restype = None
+
 #  Python High-Level Engine Wrapper
 
 class Atom2D:
@@ -96,6 +105,17 @@ class Atom2D:
         c_engine.engine_get_mouse_pos(self._ptr, ctypes.byref(x), ctypes.byref(y))
         return x.value, y.value
 
+    # draw operations
+    def draw_rect(self, x, y, w, h, r, g, b, a=255, filled=True):
+        c_engine.engine_draw_rect(self._ptr, Rect(x, y, w, h), Color(r, g, b, a), int(filled))
+
+    def draw_line(self, x1, y1, x2, y2, r, g, b, a=255):
+        c_engine.engine_draw_line(self._ptr, Vec2(x1, y1), Vec2(x2, y2), Color(r, g, b, a))
+
+    def draw_point(self, x, y, r, g, b, a=255):
+        c_engine.engine_draw_point(self._ptr, Vec2(x, y), Color(r, g, b, a))
+
+    # input operations
     def key_down(self, scancode: int) -> bool:
         return bool(c_engine.engine_key_down(self._ptr, scancode))
 
@@ -108,6 +128,7 @@ class Atom2D:
     def mouse_button_down(self, button: int) -> bool:
         return bool(c_engine.engine_mouse_button_down(self._ptr, button))
 
+    # low-level operations
     def set_clear_color(self, r: int, g: int, b: int, a: int = 255):
         c_engine.engine_set_clear_color(self._ptr, Color(r, g, b, a))
 
@@ -134,14 +155,22 @@ class Atom2D:
 
 if __name__ == "__main__":
     with Atom2D("Atom2D Engine", 800, 600, target_fps=60) as app:
-        app.set_clear_color(30, 20, 50, 255)
+        app.set_clear_color(20, 20, 25, 255)
+        x, y = 400.0, 300.0
+        speed = 200.0
+
         while app.is_running:
             app.begin_frame()
             if app.key_pressed(keys.SCANCODE_ESCAPE):
+                print("Escape caught, exiting...")
                 break
-            if app.key_down(keys.SCANCODE_SPACE):
-                app.set_clear_color(80, 20, 20, 255)
-            else:
-                app.set_clear_color(30, 20, 50, 255)
+
+            dt = app.delta_time
+            if app.key_down(keys.SCANCODE_W): y -= speed * dt
+            if app.key_down(keys.SCANCODE_S): y += speed * dt
+            if app.key_down(keys.SCANCODE_A): x -= speed * dt
+            if app.key_down(keys.SCANCODE_D): x += speed * dt
+
             app.clear()
+            app.draw_rect(x - 25, y - 25, 50, 50, 220, 80, 80)
             app.end_frame()
