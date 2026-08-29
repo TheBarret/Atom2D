@@ -17,6 +17,7 @@ typedef struct {
 Vec2 vec2(float x, float y);
 Rect rect(float x, float y, float w, float h);
 Color color(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
-void texture_free(Texture* tex);
+
+//void texture_free(Texture* tex); // moved to texture.h
 
 #endif
