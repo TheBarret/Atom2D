@@ -1,15 +1,11 @@
 # ffi.py
-# FFI module rev 0.1:
-# - Only value types cross the boundary as Structures.
-# - Engine is opaque: struct engine is hidden in engine.c, always a bare c_void_p.
-# - Scancodes located in keys.py
-
-
 import keys
 import ctypes
 from pathlib import Path
 lib_path = Path(__file__).parent / "a2d.so"
 c_engine = ctypes.CDLL(str(lib_path))
+
+# Structures
 
 class Color(ctypes.Structure):
     _fields_ = [
@@ -25,6 +21,28 @@ class Vec2(ctypes.Structure):
 class Rect(ctypes.Structure):
     _fields_ = [("x", ctypes.c_float), ("y", ctypes.c_float),
                 ("w", ctypes.c_float), ("h", ctypes.c_float)]
+
+class Texture(ctypes.Structure):
+    _fields_ = [
+        ("handle", ctypes.c_void_p),
+        ("width", ctypes.c_int32),
+        ("height", ctypes.c_int32),
+        ("loaded", ctypes.c_uint8),
+    ]
+
+class Config(ctypes.Structure):
+    _fields_ = [
+        ("scanlines_enabled", ctypes.c_uint8),
+        ("scanline_strength", ctypes.c_float),
+        ("vignette_enabled", ctypes.c_uint8),
+        ("vignette_strength", ctypes.c_float),
+        ("chromatic_aberration_enabled", ctypes.c_uint8),
+        ("chromatic_aberration_px", ctypes.c_float),
+        ("flicker_enabled", ctypes.c_uint8),
+        ("flicker_strength", ctypes.c_float),
+        ("roll_bar_enabled", ctypes.c_uint8),
+        ("roll_bar_speed", ctypes.c_float),
+    ]
 
 #  Function Signatures
 
@@ -79,6 +97,39 @@ c_engine.engine_draw_line.restype = None
 c_engine.engine_draw_point.argtypes = [ctypes.c_void_p, Vec2, Color]
 c_engine.engine_draw_point.restype = None
 
+c_engine.engine_texture_load.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+c_engine.engine_texture_load.restype = Texture
+
+c_engine.engine_texture_destroy.argtypes = [ctypes.POINTER(Texture)]
+c_engine.engine_texture_destroy.restype = None
+
+c_engine.engine_draw_texture.argtypes = [ctypes.c_void_p, ctypes.POINTER(Texture), Rect]
+c_engine.engine_draw_texture.restype = None
+
+c_engine.engine_font_load.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+c_engine.engine_font_load.restype = ctypes.c_void_p   # opaque Font
+
+c_engine.engine_font_destroy.argtypes = [ctypes.c_void_p]
+c_engine.engine_font_destroy.restype = None
+
+c_engine.engine_font_render_text.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p, Color]
+c_engine.engine_font_render_text.restype = Texture
+
+c_engine.config_default.argtypes = []
+c_engine.config_default.restype = Config
+
+c_engine.crt_effects_create.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+c_engine.crt_effects_create.restype = ctypes.c_void_p
+
+c_engine.crt_effects_destroy.argtypes = [ctypes.c_void_p]
+c_engine.crt_effects_destroy.restype = None
+
+c_engine.crt_effects_begin.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+c_engine.crt_effects_begin.restype = None
+
+c_engine.crt_effects_end.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(Config), ctypes.c_uint32]
+c_engine.crt_effects_end.restype = None
+
 #  Python High-Level Engine Wrapper
 
 class Atom2D:
@@ -104,6 +155,50 @@ class Atom2D:
         x, y = ctypes.c_int(), ctypes.c_int()
         c_engine.engine_get_mouse_pos(self._ptr, ctypes.byref(x), ctypes.byref(y))
         return x.value, y.value
+
+    # preset effects
+
+    def preset_arcade_cabinet() -> Config:
+        cfg = c_engine.config_default()
+        cfg.chromatic_aberration_enabled = 1
+        cfg.flicker_enabled = 1
+        return cfg
+
+    def preset_clean() -> Config:
+        cfg = c_engine.config_default()
+        cfg.scanlines_enabled = 0
+        cfg.vignette_enabled = 0
+        return cfg
+
+    # font operations
+    def load_font(self, path: str, size: int) -> ctypes.c_void_p:
+        font = c_engine.engine_font_load(self._ptr, path.encode("utf-8"), size)
+        if not font:
+            raise RuntimeError(f"Failed to load font: {path}")
+        return font
+
+    def render_text(self, font, text: str, r, g, b, a=255) -> Texture:
+        tex = c_engine.engine_font_render_text(self._ptr, font, text.encode("utf-8"), Color(r, g, b, a))
+        if not tex.loaded:
+            raise RuntimeError(f"Failed to render text: {text!r}")
+        return tex
+
+    def destroy_font(self, font):
+        c_engine.engine_font_destroy(font)
+
+    # texture operation
+    def load_texture(self, path: str) -> Texture:
+        tex = c_engine.engine_texture_load(self._ptr, path.encode("utf-8"))
+        if not tex.loaded:
+            raise RuntimeError(f"Failed to load texture: {path}")
+        return tex
+
+    def draw_texture(self, tex: Texture, x, y, w=None, h=None):
+        dest = Rect(x, y, w if w is not None else tex.width, h if h is not None else tex.height)
+        c_engine.engine_draw_texture(self._ptr, ctypes.byref(tex), dest)
+
+    def destroy_texture(self, tex: Texture):
+        c_engine.engine_texture_destroy(ctypes.byref(tex))
 
     # draw operations
     def draw_rect(self, x, y, w, h, r, g, b, a=255, filled=True):
@@ -152,12 +247,49 @@ class Atom2D:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+class Tube:
+    def __init__(self, app: "Atom2D", width: int, height: int):
+        self._app = app
+        self._ptr = c_engine.crt_effects_create(app._ptr, width, height)
+        if not self._ptr:
+            raise RuntimeError("Failed to initialize Tube effect")
+
+    def begin(self):
+        c_engine.crt_effects_begin(self._ptr, self._app._ptr)
+
+    def end(self, cfg: Config, elapsed_ms: int):
+        c_engine.crt_effects_end(self._ptr, self._app._ptr, ctypes.byref(cfg), elapsed_ms)
+
+    def destroy(self):
+        if self._ptr:
+            c_engine.crt_effects_destroy(self._ptr)
+            self._ptr = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.destroy()
 
 if __name__ == "__main__":
-    with Atom2D("Atom2D Engine", 800, 600, target_fps=60) as app:
+    # window size
+    WIDTH, HEIGHT = 800, 600
+
+    with Atom2D("Engine", WIDTH, HEIGHT, target_fps=60) as app:
         app.set_clear_color(20, 20, 25, 255)
         x, y = 400.0, 300.0
         speed = 200.0
+        # load texture
+        image = app.load_texture("./resource/texture.jpg")
+        fnt = app.load_font("./resource/r_fallouty.ttf", 40)
+        fnt_tex = app.render_text(fnt, "ATOM2D", 255, 255, 255)
+
+        effect = Tube(app, WIDTH, HEIGHT)
+        cfg = c_engine.config_default()
+        cfg.chromatic_aberration_enabled = 0
+        cfg.flicker_enabled = 1
+
+        elapsed_ms = 0
 
         while app.is_running:
             app.begin_frame()
@@ -166,11 +298,23 @@ if __name__ == "__main__":
                 break
 
             dt = app.delta_time
+            elapsed_ms += int(dt * 1000)
+
             if app.key_down(keys.SCANCODE_W): y -= speed * dt
             if app.key_down(keys.SCANCODE_S): y += speed * dt
             if app.key_down(keys.SCANCODE_A): x -= speed * dt
             if app.key_down(keys.SCANCODE_D): x += speed * dt
 
+            effect.begin()
             app.clear()
             app.draw_rect(x - 25, y - 25, 50, 50, 220, 80, 80)
+            app.draw_texture(image, 1, 1, 64, 64)
+            app.draw_texture(fnt_tex, 100, 10)
+            effect.end(cfg, elapsed_ms)
             app.end_frame()
+
+        # clean up
+        effect.destroy()
+        app.destroy_texture(image)
+        app.destroy_texture(fnt_tex)
+        app.destroy_font(fnt)
