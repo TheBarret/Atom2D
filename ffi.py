@@ -30,20 +30,6 @@ class Texture(ctypes.Structure):
         ("loaded", ctypes.c_uint8),
     ]
 
-class Config(ctypes.Structure):
-    _fields_ = [
-        ("scanlines_enabled", ctypes.c_uint8),
-        ("scanline_strength", ctypes.c_float),
-        ("vignette_enabled", ctypes.c_uint8),
-        ("vignette_strength", ctypes.c_float),
-        ("chromatic_aberration_enabled", ctypes.c_uint8),
-        ("chromatic_aberration_px", ctypes.c_float),
-        ("flicker_enabled", ctypes.c_uint8),
-        ("flicker_strength", ctypes.c_float),
-        ("roll_bar_enabled", ctypes.c_uint8),
-        ("roll_bar_speed", ctypes.c_float),
-    ]
-
 #  Function Signatures
 
 c_engine.engine_create.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint32]
@@ -115,20 +101,8 @@ c_engine.engine_font_destroy.restype = None
 c_engine.engine_font_render_text.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p, Color]
 c_engine.engine_font_render_text.restype = Texture
 
-c_engine.config_default.argtypes = []
-c_engine.config_default.restype = Config
-
-c_engine.crt_effects_create.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
-c_engine.crt_effects_create.restype = ctypes.c_void_p
-
-c_engine.crt_effects_destroy.argtypes = [ctypes.c_void_p]
-c_engine.crt_effects_destroy.restype = None
-
-c_engine.crt_effects_begin.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-c_engine.crt_effects_begin.restype = None
-
-c_engine.crt_effects_end.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(Config), ctypes.c_uint32]
-c_engine.crt_effects_end.restype = None
+c_engine.engine_font_measure_text.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)]
+c_engine.engine_font_measure_text.restype = None
 
 #  Python High-Level Engine Wrapper
 
@@ -156,20 +130,6 @@ class Atom2D:
         c_engine.engine_get_mouse_pos(self._ptr, ctypes.byref(x), ctypes.byref(y))
         return x.value, y.value
 
-    # preset effects
-
-    def preset_arcade_cabinet() -> Config:
-        cfg = c_engine.config_default()
-        cfg.chromatic_aberration_enabled = 1
-        cfg.flicker_enabled = 1
-        return cfg
-
-    def preset_clean() -> Config:
-        cfg = c_engine.config_default()
-        cfg.scanlines_enabled = 0
-        cfg.vignette_enabled = 0
-        return cfg
-
     # font operations
     def load_font(self, path: str, size: int) -> ctypes.c_void_p:
         font = c_engine.engine_font_load(self._ptr, path.encode("utf-8"), size)
@@ -185,6 +145,11 @@ class Atom2D:
 
     def destroy_font(self, font):
         c_engine.engine_font_destroy(font)
+
+    def measure_text(self, font, text: str) -> tuple[int, int]:
+        w, h = ctypes.c_int(), ctypes.c_int()
+        c_engine.engine_font_measure_text(font, text.encode("utf-8"), ctypes.byref(w), ctypes.byref(h))
+        return w.value, h.value
 
     # texture operation
     def load_texture(self, path: str) -> Texture:
@@ -247,30 +212,6 @@ class Atom2D:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-class Tube:
-    def __init__(self, app: "Atom2D", width: int, height: int):
-        self._app = app
-        self._ptr = c_engine.crt_effects_create(app._ptr, width, height)
-        if not self._ptr:
-            raise RuntimeError("Failed to initialize Tube effect")
-
-    def begin(self):
-        c_engine.crt_effects_begin(self._ptr, self._app._ptr)
-
-    def end(self, cfg: Config, elapsed_ms: int):
-        c_engine.crt_effects_end(self._ptr, self._app._ptr, ctypes.byref(cfg), elapsed_ms)
-
-    def destroy(self):
-        if self._ptr:
-            c_engine.crt_effects_destroy(self._ptr)
-            self._ptr = None
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.destroy()
-
 if __name__ == "__main__":
     # window size
     WIDTH, HEIGHT = 800, 600
@@ -279,17 +220,15 @@ if __name__ == "__main__":
         app.set_clear_color(20, 20, 25, 255)
         x, y = 400.0, 300.0
         speed = 200.0
-        # load texture
+
+        # textures
         image = app.load_texture("./resource/texture.jpg")
+
+        # fonts
+        label = "ATOM2D"
         fnt = app.load_font("./resource/r_fallouty.ttf", 40)
-        fnt_tex = app.render_text(fnt, "ATOM2D", 255, 255, 255)
-
-        effect = Tube(app, WIDTH, HEIGHT)
-        cfg = c_engine.config_default()
-        cfg.chromatic_aberration_enabled = 0
-        cfg.flicker_enabled = 1
-
-        elapsed_ms = 0
+        fnt_tex = app.render_text(fnt, label, 255, 255, 255)
+        w, h = app.measure_text(fnt, label)
 
         while app.is_running:
             app.begin_frame()
@@ -297,24 +236,22 @@ if __name__ == "__main__":
                 print("Escape caught, exiting...")
                 break
 
+            # inputs
             dt = app.delta_time
-            elapsed_ms += int(dt * 1000)
-
             if app.key_down(keys.SCANCODE_W): y -= speed * dt
             if app.key_down(keys.SCANCODE_S): y += speed * dt
             if app.key_down(keys.SCANCODE_A): x -= speed * dt
             if app.key_down(keys.SCANCODE_D): x += speed * dt
 
-            effect.begin()
+            # frame begin
             app.clear()
             app.draw_rect(x - 25, y - 25, 50, 50, 220, 80, 80)
             app.draw_texture(image, 1, 1, 64, 64)
-            app.draw_texture(fnt_tex, 100, 10)
-            effect.end(cfg, elapsed_ms)
+            app.draw_texture(fnt_tex, (WIDTH - w) / 2, (HEIGHT - h) / 2)
             app.end_frame()
+            # frame end
 
         # clean up
-        effect.destroy()
         app.destroy_texture(image)
         app.destroy_texture(fnt_tex)
         app.destroy_font(fnt)
