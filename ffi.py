@@ -377,6 +377,7 @@ if __name__ == "__main__":
             # primitive drawing operations
             app.draw_rect(x - 25, y - 25, 50, 50, 220, 80, 80)
             app.draw_texture(image, 1, 1, 64, 64)
+            app.draw_rect(obstacle.x, obstacle.y, obstacle.w, obstacle.h, 100, 100, 100, filled=False)
             app.draw_texture(fnt_tex, (WIDTH - w) / 2, (HEIGHT - h) / 2)
 
             app.end_frame()
