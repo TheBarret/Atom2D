@@ -3,7 +3,7 @@ Tiny 2D graphics engine in C-language using SDL2+
 
 Usage: `make clean && make all && python ffi.py`  
 
-<img width="810" height="624" alt="image" src="https://github.com/user-attachments/assets/474eacab-a8b7-484d-bb7b-a5b47e4c602c" />
+<img width="810" height="624" alt="image" src="https://cdn.discordapp.com/attachments/272805431745839106/1543652949170065518/image.png?ex=6a95a656&is=6a9454d6&hm=197e513c8690a579eb45623c11b8200ca7d57b0d7c2d015ff40c272be8094c3c&" />
 
 
 *Early testing*  
