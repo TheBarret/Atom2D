@@ -12,17 +12,24 @@ Texture engine_texture_load(Engine* engine, const char* path) {
 
     SDL_Surface* surface = IMG_Load(path);
     if (!surface) {
-        fprintf(stderr, "Texture load failed (%s): %s\n", path, IMG_GetError());
+        //fprintf(stderr, "Texture load failed (%s): %s\n", path, IMG_GetError());
+        snprintf(engine->last_error, sizeof(engine->last_error),
+                         "Texture load failed (%s): %s", path, IMG_GetError());
         return tex;
     }
 
     SDL_Texture* sdl_tex = SDL_CreateTextureFromSurface((SDL_Renderer*)engine->renderer, surface);
     int w = surface->w;
     int h = surface->h;
-    SDL_FreeSurface(surface);  // pixel data copied into the GPU texture already, surface no longer needed
+
+    // pixel data copied into the GPU texture already, surface no longer needed
+    SDL_FreeSurface(surface);
 
     if (!sdl_tex) {
-        fprintf(stderr, "Texture upload failed (%s): %s\n", path, SDL_GetError());
+        //fprintf(stderr, "Texture upload failed (%s): %s\n", path, SDL_GetError());
+        snprintf(engine->last_error, sizeof(engine->last_error),
+                         "Texture upload failed (%s): %s", path, SDL_GetError());
+                return tex;
         return tex;
     }
 

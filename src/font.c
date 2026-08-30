@@ -7,6 +7,7 @@
 
 struct Font {
     TTF_Font* handle;
+    uint8_t valid;
 };
 
 Font* engine_font_load(Engine* engine, const char* path, int size) {
@@ -23,13 +24,21 @@ Font* engine_font_load(Engine* engine, const char* path, int size) {
         TTF_CloseFont(ttf);
         return NULL;
     }
+    // success
     font->handle = ttf;
+    font->valid = 1;
     return font;
 }
 
 void engine_font_destroy(Font* font) {
-    if (!font) return;
-    if (font->handle) TTF_CloseFont(font->handle);
+    // contemplate early return
+    if (!font || !font->valid) return;
+    // de-allocate and zero out
+    if (font->handle) {
+        TTF_CloseFont(font->handle);
+        font->handle = NULL;
+        font->valid = 1;
+    }
     free(font);
 }
 
@@ -60,4 +69,17 @@ Texture engine_font_render_text(Engine* engine, Font* font, const char* text, Co
     tex.height = h;
     tex.loaded = 1;
     return tex;
+}
+
+void engine_font_measure_text(Font* font, const char* text, int* out_w, int* out_h) {
+    if (out_w) *out_w = 0;
+    if (out_h) *out_h = 0;
+
+    if (!font || !font->valid || !text) return;
+
+    if (TTF_SizeUTF8(font->handle, text, out_w, out_h) != 0) {
+        fprintf(stderr, "Text measure failed: %s\n", TTF_GetError());
+        if (out_w) *out_w = 0;
+        if (out_h) *out_h = 0;
+    }
 }

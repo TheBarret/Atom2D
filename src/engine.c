@@ -6,63 +6,77 @@
 #include <stdio.h>
 #include <string.h>
 
+// primitive mutex control
+static uint8_t g_engine_mutex = 0;
+
 Engine* engine_create(const char* title, int width, int height, uint32_t target_fps) {
+    Engine* engine = NULL;
+    SDL_Window* win = NULL;
+    SDL_Renderer* ren = NULL;
+
+    if (g_engine_mutex) {
+            fprintf(stderr, "SDL init Failed: Multiple engine_create() detected!\n");
+            return NULL;
+        }
+
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_EVENTS) < 0) {
         fprintf(stderr, "SDL Init Failed: %s\n", SDL_GetError());
         return NULL;
     }
 
-    // load image module
     if (!(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG) & (IMG_INIT_PNG | IMG_INIT_JPG))) {
         fprintf(stderr, "IMG_Init Failed: %s\n", IMG_GetError());
-        SDL_Quit();
-        return NULL;
+        goto fail_sdl;
     }
 
-    // load font module
     if (TTF_Init() != 0) {
         fprintf(stderr, "TTF_Init Failed: %s\n", TTF_GetError());
-        SDL_Quit();
-        return NULL;
+        goto fail_img;
     }
 
-    // load engine
-    Engine* engine = (Engine*)calloc(1, sizeof(Engine));
-    if (!engine) return NULL;
+    engine = (Engine*)calloc(1, sizeof(Engine));
+    if (!engine) goto fail_ttf;
 
-    // create window handle
-    SDL_Window* win = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                        width, height, SDL_WINDOW_SHOWN);
+    win = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                            width, height, SDL_WINDOW_SHOWN);
     if (!win) {
         fprintf(stderr, "Window creation failed: %s\n", SDL_GetError());
-        free(engine);
-        SDL_Quit();
-        return NULL;
+        goto fail_engine;
     }
 
-    // create renderer
-    SDL_Renderer* ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+    ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
     if (!ren) {
         fprintf(stderr, "Renderer creation failed: %s\n", SDL_GetError());
-        SDL_DestroyWindow(win);
-        free(engine);
-        SDL_Quit();
-        return NULL;
+        goto fail_window;
     }
 
-    // create interior plate
     engine->window = win;
     engine->renderer = ren;
     engine->clear_color = color(90, 90, 90, 255);
     engine->running = 1;
-
-    // Setup high-resolution timers
     engine->frequency = SDL_GetPerformanceFrequency();
     engine->last_counter = SDL_GetPerformanceCounter();
     engine->delta_time = 0.0f;
     engine->target_fps = target_fps;
 
+    // update mutex accumulator
+    g_engine_mutex = 1;
+
+    // return with new instance
     return engine;
+
+    // unwinding logic
+    fail_window:
+        SDL_DestroyWindow(win);
+    fail_engine:
+        free(engine);
+    fail_ttf:
+        TTF_Quit();
+    fail_img:
+        IMG_Quit();
+    fail_sdl:
+        SDL_Quit();
+        return NULL;
 }
 
 void engine_clear(Engine* engine) {
@@ -91,6 +105,9 @@ void engine_destroy(Engine* engine) {
     TTF_Quit();
     IMG_Quit();
     SDL_Quit();
+
+    // reset mutex counter
+    g_engine_mutex = 0;
 
     // de-allocate engine
     free(engine);
@@ -166,4 +183,8 @@ uint8_t engine_is_running(Engine* engine) {
 void engine_set_clear_color(Engine* engine, Color c) {
     if (!engine) return;
     engine->clear_color = c;
+}
+
+const char* engine_get_last_error(Engine* engine) {
+    return engine ? engine->last_error : "";
 }
