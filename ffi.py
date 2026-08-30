@@ -189,6 +189,9 @@ c_engine.raycast_rect.restype = RayHit2D
 c_engine.raycast_circle.argtypes = [Ray2D, Circle, ctypes.c_float]
 c_engine.raycast_circle.restype = RayHit2D
 
+# error lookup
+c_engine.engine_get_last_error.argtypes = [ctypes.c_void_p]
+c_engine.engine_get_last_error.restype = ctypes.c_char_p
 
 # Raycast & Intersection Helper class
 class Helper:
@@ -246,6 +249,11 @@ class Atom2D:
         c_engine.engine_get_mouse_pos(self._ptr, ctypes.byref(x), ctypes.byref(y))
         return x.value, y.value
 
+    @property
+    def last_error(self) -> str:
+        err = c_engine.engine_get_last_error(self._ptr)
+        return err.decode("utf-8") if err else ""
+
     # font operations
     def load_font(self, path: str, size: int) -> ctypes.c_void_p:
         font = c_engine.engine_font_load(self._ptr, path.encode("utf-8"), size)
@@ -268,10 +276,15 @@ class Atom2D:
         return w.value, h.value
 
     # texture operation
+    #def load_texture(self, path: str) -> Texture:
+    #    tex = c_engine.engine_texture_load(self._ptr, path.encode("utf-8"))
+    #    if not tex.loaded:
+    #        raise RuntimeError(f"Failed to load texture: {path}")
+    #    return tex
     def load_texture(self, path: str) -> Texture:
         tex = c_engine.engine_texture_load(self._ptr, path.encode("utf-8"))
         if not tex.loaded:
-            raise RuntimeError(f"Failed to load texture: {path}")
+            raise RuntimeError(self.last_error or f"Failed to load texture: {path}")
         return tex
 
     def draw_texture(self, tex: Texture, x, y, w=None, h=None):
