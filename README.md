@@ -3,7 +3,7 @@ Tiny 2D graphics engine in C-language using SDL2+
 
 Usage: `make clean && make all && python ffi.py`  
 
-<img width="810" height="624" alt="image" src="https://cdn.discordapp.com/attachments/272805431745839106/1543652949170065518/image.png?ex=6a95a656&is=6a9454d6&hm=197e513c8690a579eb45623c11b8200ca7d57b0d7c2d015ff40c272be8094c3c&" />
+<img width="810" height="624" alt="image" src="https://cdn.discordapp.com/attachments/1525976686456344596/1543688384042762270/image.png?ex=6a95c757&is=6a9475d7&hm=93db7938c5b858510e678d1d3f5e0b45ff9488b6631a5108c226b66f7cd078a1&" />
 
 
 *Early testing*  
@@ -21,5 +21,4 @@ Usage: `make clean && make all && python ffi.py`
 
 # To do
 
-- Proper `last_error` logic
 - Plugin manager
