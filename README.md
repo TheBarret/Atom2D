@@ -17,3 +17,8 @@ Types:
 - Font Objects (with font measure helpers)
 - Mouse & Keyboard input scancodes handling
 - FFI module for Python coupling
+
+# To do
+
+- Proper `last_error` logic
+- Plugin manager
