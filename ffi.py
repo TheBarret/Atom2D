@@ -15,9 +15,6 @@ class Color(ctypes.Structure):
         ("a", ctypes.c_uint8),
     ]
 
-class Vec2(ctypes.Structure):
-    _fields_ = [("x", ctypes.c_float), ("y", ctypes.c_float)]
-
 class Rect(ctypes.Structure):
     _fields_ = [("x", ctypes.c_float), ("y", ctypes.c_float),
                 ("w", ctypes.c_float), ("h", ctypes.c_float)]
@@ -28,6 +25,52 @@ class Texture(ctypes.Structure):
         ("width", ctypes.c_int32),
         ("height", ctypes.c_int32),
         ("loaded", ctypes.c_uint8),
+    ]
+
+# Utility helpers
+class Circle(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_float), ("y", ctypes.c_float), ("r", ctypes.c_float)]
+
+class Mat3(ctypes.Structure):
+    _fields_ = [("m", (ctypes.c_float * 3) * 3)]
+
+class Vec2(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_float), ("y", ctypes.c_float)]
+
+    def __add__(self, other):
+        return Vec2(self.x + other.x, self.y + other.y)
+
+    def __sub__(self, other):
+        return Vec2(self.x - other.x, self.y - other.y)
+
+    def __mul__(self, scalar: float):
+        return Vec2(self.x * scalar, self.y * scalar)
+
+    @property
+    def length(self) -> float:
+        return c_engine.vec2_length(self)
+
+    def normalized(self):
+        return c_engine.vec2_normalize(self)
+
+    def distance_to(self, other) -> float:
+        return c_engine.vec2_distance(self, other)
+
+    def rotate(self, angle_rad: float):
+        return c_engine.vec2_rotate(self, angle_rad)
+
+class Line2D(ctypes.Structure):
+    _fields_ = [("p1", Vec2), ("p2", Vec2)]
+
+class Ray2D(ctypes.Structure):
+    _fields_ = [("origin", Vec2), ("dir", Vec2)]
+
+class RayHit2D(ctypes.Structure):
+    _fields_ = [
+        ("hit", ctypes.c_uint8),
+        ("point", Vec2),
+        ("normal", Vec2),
+        ("distance", ctypes.c_float),
     ]
 
 #  Function Signatures
@@ -103,6 +146,48 @@ c_engine.engine_font_render_text.restype = Texture
 
 c_engine.engine_font_measure_text.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)]
 c_engine.engine_font_measure_text.restype = None
+
+# Utilities: Vector Math
+c_engine.vec2_length.argtypes = [Vec2]
+c_engine.vec2_length.restype = ctypes.c_float
+
+c_engine.vec2_normalize.argtypes = [Vec2]
+c_engine.vec2_normalize.restype = Vec2
+
+c_engine.vec2_dot.argtypes = [Vec2, Vec2]
+c_engine.vec2_dot.restype = ctypes.c_float
+
+c_engine.vec2_distance.argtypes = [Vec2, Vec2]
+c_engine.vec2_distance.restype = ctypes.c_float
+
+c_engine.vec2_rotate.argtypes = [Vec2, ctypes.c_float]
+c_engine.vec2_rotate.restype = Vec2
+
+# Utilities: Geometry & Collisions
+c_engine.check_aabb_aabb.argtypes = [Rect, Rect]
+c_engine.check_aabb_aabb.restype = ctypes.c_uint8
+
+c_engine.check_circle_circle.argtypes = [Circle, Circle]
+c_engine.check_circle_circle.restype = ctypes.c_uint8
+
+c_engine.check_circle_aabb.argtypes = [Circle, Rect]
+c_engine.check_circle_aabb.restype = ctypes.c_uint8
+
+c_engine.check_point_in_rect.argtypes = [Vec2, Rect]
+c_engine.check_point_in_rect.restype = ctypes.c_uint8
+
+# utilities: Raycasting & Intersecting
+c_engine.line_intersects_line.argtypes = [Line2D, Line2D, ctypes.POINTER(Vec2)]
+c_engine.line_intersects_line.restype = ctypes.c_uint8
+
+c_engine.raycast_line.argtypes = [Ray2D, Line2D, ctypes.c_float]
+c_engine.raycast_line.restype = RayHit2D
+
+c_engine.raycast_rect.argtypes = [Ray2D, Rect, ctypes.c_float]
+c_engine.raycast_rect.restype = RayHit2D
+
+c_engine.raycast_circle.argtypes = [Ray2D, Circle, ctypes.c_float]
+c_engine.raycast_circle.restype = RayHit2D
 
 #  Python High-Level Engine Wrapper
 
@@ -212,6 +297,28 @@ class Atom2D:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    # Raycast & Intersections
+    def check_aabb_aabb(a: Rect, b: Rect) -> bool:
+        return bool(c_engine.check_aabb_aabb(a, b))
+
+    def check_circle_circle(a: Circle, b: Circle) -> bool:
+        return bool(c_engine.check_circle_circle(a, b))
+
+    def check_circle_aabb(c: Circle, r: Rect) -> bool:
+        return bool(c_engine.check_circle_aabb(c, r))
+
+    def check_point_in_rect(p: Vec2, r: Rect) -> bool:
+        return bool(c_engine.check_point_in_rect(p, r))
+
+    def raycast_rect(ray: Ray2D, r: Rect, max_dist: float) -> RayHit2D:
+        return c_engine.raycast_rect(ray, r, max_dist)
+
+    def raycast_circle(ray: Ray2D, c: Circle, max_dist: float) -> RayHit2D:
+        return c_engine.raycast_circle(ray, c, max_dist)
+
+    def raycast_line(ray: Ray2D, line: Line2D, max_dist: float) -> RayHit2D:
+        return c_engine.raycast_line(ray, line, max_dist)
+
 if __name__ == "__main__":
     # window size
     WIDTH, HEIGHT = 800, 600
@@ -236,7 +343,7 @@ if __name__ == "__main__":
                 print("Escape caught, exiting...")
                 break
 
-            # inputs
+            # handle input
             dt = app.delta_time
             if app.key_down(keys.SCANCODE_W): y -= speed * dt
             if app.key_down(keys.SCANCODE_S): y += speed * dt
@@ -245,9 +352,33 @@ if __name__ == "__main__":
 
             # frame begin
             app.clear()
+
+            # utility testing
+            mouse_x, mouse_y = app.mouse_pos
+            player_pos = Vec2(x, y)
+            target_pos = Vec2(float(mouse_x), float(mouse_y))
+
+            # raycast testing
+            ray_dir = (target_pos - player_pos).normalized()
+            ray = Ray2D(player_pos, ray_dir)
+
+            # Obstacle box
+            obstacle = Rect(300, 200, 100, 100)
+            hit = c_engine.raycast_rect(ray, obstacle, 1000.0)
+
+            # Primitive hitbox detection
+            if hit.hit:
+                app.draw_line(player_pos.x, player_pos.y, hit.point.x, hit.point.y, 255, 0, 0)
+                app.draw_rect(hit.point.x - 3, hit.point.y - 3, 6, 6, 0, 255, 0)
+            else:
+                end_p = player_pos + (ray_dir * 1000.0)
+                app.draw_line(player_pos.x, player_pos.y, end_p.x, end_p.y, 255, 255, 0)
+
+            # primitive drawing operations
             app.draw_rect(x - 25, y - 25, 50, 50, 220, 80, 80)
             app.draw_texture(image, 1, 1, 64, 64)
             app.draw_texture(fnt_tex, (WIDTH - w) / 2, (HEIGHT - h) / 2)
+
             app.end_frame()
             # frame end
 
