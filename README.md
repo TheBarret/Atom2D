@@ -10,12 +10,11 @@ Usage: `make clean && make all && python ffi.py`
 
 # Core Features
 
-Types:  
-- Vec2: `typedef struct { float x, y; } Vec2;`
-- Rect: `typedef struct { float x, y, w, h; } Rect;`
-- Color: `typedef struct { uint8_t r, g, b, a; } Color;`
+- Basic Vec2: `typedef struct { float x, y; } Vec2;`
+- Basic Rect: `typedef struct { float x, y, w, h; } Rect;`
+- Basic Color: `typedef struct { uint8_t r, g, b, a; } Color;`
 - Texture Objects
-- Font Objects (with font measure helpers)
+- Font Objects (comes with font helper tools)
 - Mouse & Keyboard input scancodes handling
 - FFI module for Python coupling
 - Utilities toolkit (math, geometric, raycast and hitbox logic)
