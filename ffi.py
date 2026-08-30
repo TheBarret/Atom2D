@@ -189,6 +189,37 @@ c_engine.raycast_rect.restype = RayHit2D
 c_engine.raycast_circle.argtypes = [Ray2D, Circle, ctypes.c_float]
 c_engine.raycast_circle.restype = RayHit2D
 
+
+# Raycast & Intersection Helper class
+class Helper:
+    @staticmethod
+    def check_aabb_aabb(a: Rect, b: Rect) -> bool:
+        return bool(c_engine.check_aabb_aabb(a, b))
+
+    @staticmethod
+    def check_circle_circle(a: Circle, b: Circle) -> bool:
+        return bool(c_engine.check_circle_circle(a, b))
+
+    @staticmethod
+    def check_circle_aabb(c: Circle, r: Rect) -> bool:
+        return bool(c_engine.check_circle_aabb(c, r))
+
+    @staticmethod
+    def check_point_in_rect(p: Vec2, r: Rect) -> bool:
+        return bool(c_engine.check_point_in_rect(p, r))
+
+    @staticmethod
+    def raycast_rect(ray: Ray2D, r: Rect, max_dist: float) -> RayHit2D:
+        return c_engine.raycast_rect(ray, r, max_dist)
+
+    @staticmethod
+    def raycast_circle(ray: Ray2D, c: Circle, max_dist: float) -> RayHit2D:
+        return c_engine.raycast_circle(ray, c, max_dist)
+
+    @staticmethod
+    def raycast_line(ray: Ray2D, line: Line2D, max_dist: float) -> RayHit2D:
+        return c_engine.raycast_line(ray, line, max_dist)
+
 #  Python High-Level Engine Wrapper
 
 class Atom2D:
@@ -297,27 +328,6 @@ class Atom2D:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    # Raycast & Intersections
-    def check_aabb_aabb(a: Rect, b: Rect) -> bool:
-        return bool(c_engine.check_aabb_aabb(a, b))
-
-    def check_circle_circle(a: Circle, b: Circle) -> bool:
-        return bool(c_engine.check_circle_circle(a, b))
-
-    def check_circle_aabb(c: Circle, r: Rect) -> bool:
-        return bool(c_engine.check_circle_aabb(c, r))
-
-    def check_point_in_rect(p: Vec2, r: Rect) -> bool:
-        return bool(c_engine.check_point_in_rect(p, r))
-
-    def raycast_rect(ray: Ray2D, r: Rect, max_dist: float) -> RayHit2D:
-        return c_engine.raycast_rect(ray, r, max_dist)
-
-    def raycast_circle(ray: Ray2D, c: Circle, max_dist: float) -> RayHit2D:
-        return c_engine.raycast_circle(ray, c, max_dist)
-
-    def raycast_line(ray: Ray2D, line: Line2D, max_dist: float) -> RayHit2D:
-        return c_engine.raycast_line(ray, line, max_dist)
 
 if __name__ == "__main__":
     # window size
@@ -364,7 +374,8 @@ if __name__ == "__main__":
 
             # Obstacle box
             obstacle = Rect(300, 200, 100, 100)
-            hit = c_engine.raycast_rect(ray, obstacle, 1000.0)
+            #hit = c_engine.raycast_rect(ray, obstacle, 1000.0)
+            hit = Helper.raycast_rect(ray, obstacle, 1000.0)
 
             # Primitive hitbox detection
             if hit.hit:
