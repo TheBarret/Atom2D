@@ -21,6 +21,8 @@ struct Engine {
     int mouse_x, mouse_y;
     uint32_t mouse_buttons_curr;
     uint32_t mouse_buttons_prev;
+
+    char last_error[256];
 };
 
 #endif

@@ -8,5 +8,5 @@ typedef struct Font Font;   // opaque
 Font* engine_font_load(Engine* engine, const char* path, int size);
 void engine_font_destroy(Font* font);
 Texture engine_font_render_text(Engine* engine, Font* font, const char* text, Color c);
-
+void engine_font_measure_text(Font* font, const char* text, int* out_w, int* out_h);
 #endif

@@ -18,4 +18,5 @@ uint32_t engine_get_fps(Engine* engine);
 uint8_t engine_is_running(Engine* engine);     // interior branch logic
 void engine_set_clear_color(Engine* engine, Color c);
 
+const char* engine_get_last_error(Engine* engine);
 #endif
