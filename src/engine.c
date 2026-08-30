@@ -40,13 +40,19 @@ Engine* engine_create(const char* title, int width, int height, uint32_t target_
     win = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                             width, height, SDL_WINDOW_SHOWN);
     if (!win) {
-        fprintf(stderr, "Window creation failed: %s\n", SDL_GetError());
+        //fprintf(stderr, "Window creation failed: %s\n", SDL_GetError());
+        snprintf(engine->last_error, sizeof(engine->last_error),
+                    "Window creation failed: %s", SDL_GetError());
+        fprintf(stderr, "%s\n", engine->last_error);
         goto fail_engine;
     }
 
     ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
     if (!ren) {
-        fprintf(stderr, "Renderer creation failed: %s\n", SDL_GetError());
+        //fprintf(stderr, "Renderer creation failed: %s\n", SDL_GetError());
+        snprintf(engine->last_error, sizeof(engine->last_error),
+                    "Renderer creation failed: %s", SDL_GetError());
+        fprintf(stderr, "%s\n", engine->last_error);
         goto fail_window;
     }
 

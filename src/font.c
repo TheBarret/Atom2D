@@ -15,6 +15,11 @@ Font* engine_font_load(Engine* engine, const char* path, int size) {
 
     TTF_Font* ttf = TTF_OpenFont(path, size);
     if (!ttf) {
+        //fprintf(stderr, "Font load failed (%s): %s\n", path, TTF_GetError());
+        if (engine) {
+            snprintf(engine->last_error, sizeof(engine->last_error),
+                        "Font load failed (%s): %s", path, TTF_GetError());
+        }
         fprintf(stderr, "Font load failed (%s): %s\n", path, TTF_GetError());
         return NULL;
     }
